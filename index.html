@@ -1,0 +1,741 @@
+from pathlib import Path
+
+html = r'''<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulator Lintasan Terpendek</title>
+<style>
+:root{
+  --bg:#0b1020;
+  --panel:#111936;
+  --panel2:#182344;
+  --border:#2b3964;
+  --text:#eef3ff;
+  --muted:#9eacd0;
+  --accent:#7c5cff;
+  --accent2:#20c7a8;
+  --orange:#ff9d45;
+  --red:#ff5d73;
+  --cyan:#42c9ff;
+  --path:#ffd34d;
+  --shadow:0 14px 40px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 15% 10%,rgba(124,92,255,.18),transparent 30%),
+    radial-gradient(circle at 85% 20%,rgba(32,199,168,.12),transparent 28%),
+    linear-gradient(145deg,#080d1b,#101832 55%,#0b1020);
+}
+.container{max-width:1400px;margin:auto;padding:26px}
+header{
+  background:linear-gradient(135deg,rgba(24,35,68,.95),rgba(17,25,54,.95));
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:25px 28px;
+  box-shadow:var(--shadow);
+  margin-bottom:16px;
+}
+.eyebrow{color:var(--cyan);font-weight:700;font-size:12px;letter-spacing:1.6px;text-transform:uppercase}
+h1{margin:7px 0 5px;font-size:clamp(25px,3vw,38px)}
+.subtitle{color:var(--muted);margin:0;line-height:1.55}
+.toolbar{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  background:rgba(17,25,54,.94);border:1px solid var(--border);
+  padding:13px;border-radius:18px;margin-bottom:16px;box-shadow:var(--shadow);
+}
+.group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.group-label{font-size:12px;color:var(--muted);font-weight:700;margin-right:2px}
+button,select{
+  border:1px solid var(--border);background:#182344;color:var(--text);
+  border-radius:10px;padding:10px 13px;font-size:14px;cursor:pointer;
+  transition:.18s ease;
+}
+button:hover,select:hover{border-color:#53679f;transform:translateY(-1px)}
+button.active{background:linear-gradient(135deg,#7355f5,#8b6cff);border-color:#9d8bff}
+button.primary{background:linear-gradient(135deg,#0ea98e,#20c7a8);border-color:#35d8bb;color:#061511;font-weight:800}
+button.danger{background:#351c2a;border-color:#673044;color:#ffb5c0}
+button.warn{background:#38291b;border-color:#6a4c27;color:#ffd7a6}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.status{
+  margin-left:auto;min-width:240px;color:#c8d2ef;font-size:13px;
+  padding:8px 12px;border-radius:10px;background:#0c142b;border:1px solid #202d51;
+}
+.main-card,.result-card{
+  background:rgba(17,25,54,.95);border:1px solid var(--border);
+  border-radius:20px;box-shadow:var(--shadow);
+}
+.graph-head{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.graph-title{font-weight:800}
+.legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.normal{background:#6378aa}.dot.start{background:var(--accent2)}.dot.target{background:var(--orange)}.dot.path{background:var(--path)}
+#graphWrap{position:relative;height:610px;overflow:hidden;border-radius:0 0 20px 20px;background:
+  linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
+  background-size:30px 30px;
+}
+#graphSvg{width:100%;height:100%;display:block;touch-action:none}
+.edge{stroke:#7082ad;stroke-width:3;fill:none;cursor:pointer}
+.edge:hover{stroke:#aab8dc;stroke-width:5}
+.edge.path{stroke:var(--path);stroke-width:6;filter:drop-shadow(0 0 5px rgba(255,211,77,.45))}
+.edge-label{fill:#eaf0ff;font-size:13px;font-weight:800;paint-order:stroke;stroke:#111936;stroke-width:5px;stroke-linejoin:round;pointer-events:none}
+.node circle{fill:#172445;stroke:#6e82b8;stroke-width:3;cursor:pointer;filter:drop-shadow(0 5px 8px rgba(0,0,0,.3))}
+.node:hover circle{stroke:#b5c5ef}
+.node.start circle{fill:#123d39;stroke:var(--accent2)}
+.node.target circle{fill:#4a2e17;stroke:var(--orange)}
+.node.path circle{fill:#4c4118;stroke:var(--path);stroke-width:4}
+.node text{fill:#fff;font-weight:900;font-size:14px;text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+.node-sub{fill:#9eacd0!important;font-size:9px!important;font-weight:600!important;transform:translateY(28px)}
+.empty{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;text-align:center;color:var(--muted);padding:30px;
+}
+.empty strong{display:block;color:#dfe7ff;font-size:18px;margin-bottom:7px}
+.bottom{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
+.result-card{padding:20px}
+.section-title{font-size:18px;font-weight:850;margin:0 0 14px}
+.result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.metric{background:#0d1530;border:1px solid #25345d;border-radius:13px;padding:13px}
+.metric small{display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
+.metric strong{font-size:17px}
+.path-box{
+  margin-top:12px;padding:13px 15px;border-radius:12px;background:#111c38;border:1px solid #293b68;
+  font-size:16px;font-weight:800;word-break:break-word;
+}
+.table-wrap{overflow:auto;border:1px solid #26365e;border-radius:13px}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+th,td{padding:10px 11px;border-bottom:1px solid #25345a;text-align:left}
+th{background:#172344;color:#cbd6f4;position:sticky;top:0}
+td{color:#dce4fa}
+tr:last-child td{border-bottom:0}
+.note{color:var(--muted);font-size:12px;line-height:1.55;margin-top:10px}
+.instructions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.instruction{padding:12px;background:#0d1530;border:1px solid #26365e;border-radius:12px;color:#b6c3e4;font-size:12px;line-height:1.5}
+.instruction b{color:#fff}
+@media(max-width:900px){
+  .status{margin-left:0;width:100%}
+  .result-grid{grid-template-columns:repeat(2,1fr)}
+  .instructions{grid-template-columns:1fr}
+  #graphWrap{height:500px}
+}
+@media(max-width:550px){
+  .container{padding:12px}.toolbar{padding:10px}
+  .result-grid{grid-template-columns:1fr 1fr}
+  #graphWrap{height:430px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div class="eyebrow">Interactive Graph Laboratory</div>
+  <h1>Simulator Lintasan Terpendek</h1>
+  <p class="subtitle">Bandingkan Bellman-Ford, Floyd-Warshall, dan A* melalui graf yang dapat dibuat langsung pada kanvas.</p>
+</header>
+
+<div class="toolbar">
+  <div class="group">
+    <span class="group-label">Jenis Graf</span>
+    <button id="directedBtn" class="active" onclick="setGraphType('directed')">→ Berarah</button>
+    <button id="undirectedBtn" onclick="setGraphType('undirected')">— Tak Berarah</button>
+  </div>
+  <div class="group">
+    <span class="group-label">Edit</span>
+    <button id="addNodeBtn" onclick="setMode('addNode')">＋ Simpul</button>
+    <button id="addEdgeBtn" onclick="setMode('addEdge')">＋ Sisi</button>
+    <button id="deleteBtn" onclick="setMode('delete')">⌫ Hapus</button>
+  </div>
+  <div class="group">
+    <span class="group-label">Data</span>
+    <button class="warn" onclick="loadExample()">↻ Reset Contoh</button>
+    <button class="danger" onclick="clearGraph()">Kosongkan</button>
+  </div>
+  <div class="group">
+    <span class="group-label">Algoritma</span>
+    <select id="algorithm">
+      <option value="bellman">Bellman-Ford</option>
+      <option value="floyd">Floyd-Warshall</option>
+      <option value="astar">A*</option>
+    </select>
+  </div>
+  <div class="group">
+    <span class="group-label">Awal</span>
+    <select id="sourceSelect"></select>
+    <span class="group-label">Tujuan</span>
+    <select id="targetSelect"></select>
+    <button class="primary" onclick="runAlgorithm()">▶ Jalankan</button>
+  </div>
+  <div class="status" id="status">Mode: pilih aksi, lalu klik kanvas.</div>
+</div>
+
+<section class="main-card">
+  <div class="graph-head">
+    <div class="graph-title">Visualisasi Graf</div>
+    <div class="legend">
+      <span><i class="dot normal"></i> Simpul</span>
+      <span><i class="dot start"></i> Awal</span>
+      <span><i class="dot target"></i> Tujuan</span>
+      <span><i class="dot path"></i> Lintasan terpendek</span>
+    </div>
+  </div>
+  <div id="graphWrap">
+    <svg id="graphSvg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L10,3.5 L0,7 z" fill="#7082ad"></path>
+        </marker>
+        <marker id="arrowPath" markerWidth="11" markerHeight="11" refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L11,3.5 L0,7 z" fill="#ffd34d"></path>
+        </marker>
+      </defs>
+      <g id="edgesLayer"></g>
+      <g id="nodesLayer"></g>
+    </svg>
+    <div class="empty" id="emptyHint">
+      <div>
+        <strong>Mulai membuat graf</strong>
+        Pilih <b>＋ Simpul</b>, kemudian klik area kanvas.<br>
+        Untuk membuat sisi, pilih <b>＋ Sisi</b> lalu klik dua simpul.
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="bottom">
+  <section class="result-card">
+    <h2 class="section-title">Hasil</h2>
+    <div class="result-grid">
+      <div class="metric"><small>Simpul Awal</small><strong id="resultSource">—</strong></div>
+      <div class="metric"><small>Simpul Tujuan</small><strong id="resultTarget">—</strong></div>
+      <div class="metric"><small>Total Bobot</small><strong id="resultDistance">—</strong></div>
+      <div class="metric"><small>Algoritma</small><strong id="resultAlgorithm">—</strong></div>
+    </div>
+    <div class="path-box" id="resultPath">Belum ada hasil. Jalankan algoritma setelah membuat graf.</div>
+    <div class="note" id="resultNote"></div>
+  </section>
+
+  <section class="result-card">
+    <h2 class="section-title" id="stepsTitle">Langkah Algoritma</h2>
+    <div class="table-wrap">
+      <table id="stepsTable">
+        <thead><tr><th>Informasi</th></tr></thead>
+        <tbody><tr><td>Langkah algoritma akan muncul di sini.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="result-card">
+    <h2 class="section-title">Cara Penggunaan</h2>
+    <div class="instructions">
+      <div class="instruction"><b>1. Buat simpul</b><br>Pilih ＋ Simpul lalu klik lokasi yang diinginkan. Simpul dapat diseret untuk mengubah posisinya.</div>
+      <div class="instruction"><b>2. Buat sisi</b><br>Pilih ＋ Sisi → klik simpul pertama → klik simpul kedua → masukkan bobot sisi.</div>
+      <div class="instruction"><b>3. Jalankan</b><br>Pilih algoritma, simpul awal, simpul tujuan, lalu tekan Jalankan. Lintasan akan disorot.</div>
+    </div>
+    <div class="note"><b>Catatan A*:</b> heuristic menggunakan jarak Euclidean berdasarkan posisi simpul pada kanvas. Agar interpretasi A* sesuai prinsip heuristic berbasis jarak, bobot sisi sebaiknya merepresentasikan jarak atau biaya yang berkaitan dengan jarak.</div>
+  </section>
+</div>
+</div>
+
+<script>
+const svg = document.getElementById('graphSvg');
+const wrap = document.getElementById('graphWrap');
+const edgesLayer = document.getElementById('edgesLayer');
+const nodesLayer = document.getElementById('nodesLayer');
+const emptyHint = document.getElementById('emptyHint');
+const statusEl = document.getElementById('status');
+
+let nodes = [];
+let edges = [];
+let graphType = 'directed';
+let mode = 'idle';
+let nodeCounter = 0;
+let selectedForEdge = null;
+let dragState = null;
+let lastPath = [];
+
+const modeButtons = ['addNodeBtn','addEdgeBtn','deleteBtn'];
+
+function setGraphType(type){
+  graphType = type;
+  document.getElementById('directedBtn').classList.toggle('active',type==='directed');
+  document.getElementById('undirectedBtn').classList.toggle('active',type==='undirected');
+  lastPath = [];
+  render();
+  clearResult('Jenis graf diubah. Jalankan kembali algoritma untuk hasil baru.');
+  setStatus(type==='directed' ? 'Graf berarah: sisi memiliki tanda panah.' : 'Graf tak berarah: sisi tidak memiliki tanda panah.');
+}
+function setMode(newMode){
+  mode = newMode;
+  selectedForEdge = null;
+  modeButtons.forEach(id=>document.getElementById(id).classList.remove('active'));
+  if(newMode==='addNode') document.getElementById('addNodeBtn').classList.add('active');
+  if(newMode==='addEdge') document.getElementById('addEdgeBtn').classList.add('active');
+  if(newMode==='delete') document.getElementById('deleteBtn').classList.add('active');
+  const messages = {
+    addNode:'Mode tambah simpul: klik area kosong pada kanvas.',
+    addEdge:'Mode tambah sisi: klik simpul pertama, lalu simpul kedua.',
+    delete:'Mode hapus: klik simpul atau sisi yang ingin dihapus.',
+    idle:'Mode siap.'
+  };
+  setStatus(messages[newMode] || messages.idle);
+}
+function setStatus(msg){ statusEl.textContent = msg; }
+
+function svgPoint(evt){
+  const r = svg.getBoundingClientRect();
+  return {x:evt.clientX-r.left,y:evt.clientY-r.top};
+}
+function distance(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+
+svg.addEventListener('click', function(evt){
+  if(evt.target !== svg) return;
+  if(mode==='addNode'){
+    const p=svgPoint(evt);
+    addNode(p.x,p.y);
+  }
+});
+
+function addNode(x,y,name){
+  const n = {
+    id:'n'+(++nodeCounter),
+    name:name || String.fromCharCode(65 + nodes.length),
+    x,y
+  };
+  nodes.push(n);
+  updateSelectors();
+  render();
+  setMode('addNode');
+}
+function addEdge(from,to,weight){
+  if(from===to) return;
+  const exists=edges.some(e=>
+    (e.from===from && e.to===to) ||
+    (graphType==='undirected' && e.from===to && e.to===from)
+  );
+  if(exists){ alert('Sisi antara kedua simpul tersebut sudah ada.'); return; }
+  edges.push({id:'e'+Date.now()+Math.random(),from,to,weight:Number(weight)});
+  lastPath=[];
+  render();
+  updateSelectors();
+}
+
+function nodeById(id){return nodes.find(n=>n.id===id)}
+function nodeAt(x,y){
+  for(let i=nodes.length-1;i>=0;i--){
+    if(distance({x,y},nodes[i])<=24) return nodes[i];
+  }
+  return null;
+}
+
+function render(){
+  edgesLayer.innerHTML='';
+  nodesLayer.innerHTML='';
+  emptyHint.style.display=nodes.length?'none':'flex';
+
+  for(const e of edges){
+    const a=nodeById(e.from), b=nodeById(e.to);
+    if(!a||!b) continue;
+    const dx=b.x-a.x, dy=b.y-a.y, len=Math.hypot(dx,dy)||1;
+    const ux=dx/len, uy=dy/len;
+    const start={x:a.x+ux*23,y:a.y+uy*23};
+    const end={x:b.x-ux*25,y:b.y-uy*25};
+    const isPath=edgeIsInPath(e);
+    const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',start.x);line.setAttribute('y1',start.y);
+    line.setAttribute('x2',end.x);line.setAttribute('y2',end.y);
+    line.setAttribute('class','edge'+(isPath?' path':''));
+    line.dataset.id=e.id;
+    if(graphType==='directed') line.setAttribute('marker-end',isPath?'url(#arrowPath)':'url(#arrow)');
+    line.addEventListener('click',evt=>{
+      evt.stopPropagation();
+      if(mode==='delete') deleteEdge(e.id);
+    });
+    edgesLayer.appendChild(line);
+
+    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x',(a.x+b.x)/2);
+    label.setAttribute('y',(a.y+b.y)/2-8);
+    label.setAttribute('class','edge-label');
+    label.textContent=e.weight;
+    edgesLayer.appendChild(label);
+  }
+
+  for(const n of nodes){
+    const g=document.createElementNS('http://www.w3.org/2000/svg','g');
+    const inPath=lastPath.includes(n.id);
+    g.setAttribute('class','node'+(getSourceId()===n.id?' start':'')+(getTargetId()===n.id?' target':'')+(inPath?' path':''));
+    g.setAttribute('transform',`translate(${n.x},${n.y})`);
+    g.dataset.id=n.id;
+
+    const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r',20);
+    g.appendChild(c);
+
+    const t=document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.textContent=n.name;
+    g.appendChild(t);
+
+    const sub=document.createElementNS('http://www.w3.org/2000/svg','text');
+    sub.textContent=n.id.replace('n','');
+    sub.setAttribute('class','node-sub');
+    g.appendChild(sub);
+
+    g.addEventListener('mousedown',startDrag);
+    g.addEventListener('click',nodeClick);
+    nodesLayer.appendChild(g);
+  }
+}
+function startDrag(evt){
+  evt.stopPropagation();
+  const n=nodeById(evt.currentTarget.dataset.id);
+  if(!n) return;
+  if(mode==='addEdge' || mode==='delete') return;
+  const p=svgPoint(evt);
+  dragState={node:n,offsetX:p.x-n.x,offsetY:p.y-n.y,moved:false};
+  window.addEventListener('mousemove',dragMove);
+  window.addEventListener('mouseup',endDrag);
+}
+function dragMove(evt){
+  if(!dragState)return;
+  const p=svgPoint(evt);
+  dragState.node.x=Math.max(25,Math.min(svg.clientWidth-25,p.x-dragState.offsetX));
+  dragState.node.y=Math.max(25,Math.min(svg.clientHeight-25,p.y-dragState.offsetY));
+  dragState.moved=true;
+  render();
+}
+function endDrag(){
+  window.removeEventListener('mousemove',dragMove);
+  window.removeEventListener('mouseup',endDrag);
+  dragState=null;
+}
+function nodeClick(evt){
+  evt.stopPropagation();
+  const n=nodeById(evt.currentTarget.dataset.id);
+  if(mode==='addEdge'){
+    if(!selectedForEdge){
+      selectedForEdge=n;
+      setStatus(`Simpul pertama: ${n.name}. Sekarang klik simpul kedua.`);
+      render();
+      evt.currentTarget.querySelector('circle').style.stroke='#ffd34d';
+    }else{
+      if(selectedForEdge.id===n.id){
+        selectedForEdge=null;
+        setStatus('Pilih simpul kedua yang berbeda.');
+        return;
+      }
+      const weight=prompt(`Masukkan bobot untuk ${selectedForEdge.name} ${graphType==='directed'?'→':'—'} ${n.name}:`,'1');
+      if(weight!==null && weight.trim()!=='' && Number.isFinite(Number(weight))){
+        addEdge(selectedForEdge.id,n.id,Number(weight));
+        setStatus(`Sisi ${selectedForEdge.name} ${graphType==='directed'?'→':'—'} ${n.name} berhasil dibuat.`);
+      }else if(weight!==null){
+        alert('Bobot harus berupa angka.');
+      }
+      selectedForEdge=null;
+      render();
+    }
+  }else if(mode==='delete'){
+    deleteNode(n.id);
+  }
+}
+
+function deleteNode(id){
+  const n=nodeById(id);
+  if(!n)return;
+  nodes=nodes.filter(x=>x.id!==id);
+  edges=edges.filter(e=>e.from!==id && e.to!==id);
+  lastPath=[];
+  updateSelectors();render();
+  setStatus(`Simpul ${n.name} dihapus.`);
+}
+function deleteEdge(id){
+  const e=edges.find(x=>x.id===id);
+  if(!e)return;
+  edges=edges.filter(x=>x.id!==id);
+  lastPath=[];
+  render();
+  setStatus('Sisi dihapus.');
+}
+function clearGraph(){
+  if(nodes.length && !confirm('Hapus seluruh simpul dan sisi?'))return;
+  nodes=[];edges=[];lastPath=[];selectedForEdge=null;
+  updateSelectors();render();clearResult('Graf telah dikosongkan.');setMode('idle');
+}
+function edgeIsInPath(e){
+  for(let i=0;i<lastPath.length-1;i++){
+    const a=lastPath[i],b=lastPath[i+1];
+    if((e.from===a&&e.to===b) || (graphType==='undirected'&&e.from===b&&e.to===a)) return true;
+  }
+  return false;
+}
+
+function updateSelectors(){
+  const s=document.getElementById('sourceSelect'), t=document.getElementById('targetSelect');
+  const oldS=s.value,oldT=t.value;
+  s.innerHTML='';t.innerHTML='';
+  nodes.forEach(n=>{
+    const o1=new Option(n.name,n.id),o2=new Option(n.name,n.id);
+    s.add(o1);t.add(o2);
+  });
+  if(nodes.length){
+    s.value=nodes.some(n=>n.id===oldS)?oldS:nodes[0].id;
+    t.value=nodes.some(n=>n.id===oldT)?oldT:(nodes[1]?.id||nodes[0].id);
+  }
+  render();
+}
+function getSourceId(){return document.getElementById('sourceSelect').value}
+function getTargetId(){return document.getElementById('targetSelect').value}
+document.getElementById('sourceSelect').addEventListener('change',render);
+document.getElementById('targetSelect').addEventListener('change',render);
+
+function adjacency(){
+  const adj=Object.fromEntries(nodes.map(n=>[n.id,[]]));
+  edges.forEach(e=>{
+    adj[e.from].push({to:e.to,w:e.weight,edge:e});
+    if(graphType==='undirected') adj[e.to].push({to:e.from,w:e.weight,edge:e});
+  });
+  return adj;
+}
+function fmt(v){
+  return v===Infinity?'∞':Number.isInteger(v)?String(v):Number(v.toFixed(4)).toString();
+}
+function name(id){return nodeById(id)?.name||id}
+function pathDistance(path){
+  let total=0;
+  for(let i=0;i<path.length-1;i++){
+    const e=edges.find(e=>
+      (e.from===path[i]&&e.to===path[i+1]) ||
+      (graphType==='undirected'&&e.from===path[i+1]&&e.to===path[i])
+    );
+    if(e) total+=e.weight;
+  }
+  return total;
+}
+
+function reconstruct(prev,target){
+  const path=[];
+  let cur=target;
+  const guard=new Set();
+  while(cur!=null){
+    if(guard.has(cur))return [];
+    guard.add(cur);path.unshift(cur);cur=prev[cur];
+  }
+  return path;
+}
+
+function bellmanFord(source,target){
+  const dist=Object.fromEntries(nodes.map(n=>[n.id,Infinity]));
+  const prev=Object.fromEntries(nodes.map(n=>[n.id,null]));
+  dist[source]=0;
+  const steps=[];
+  const directedEdges=[];
+  edges.forEach(e=>{
+    directedEdges.push({from:e.from,to:e.to,w:e.weight});
+    if(graphType==='undirected') directedEdges.push({from:e.to,to:e.from,w:e.weight});
+  });
+  for(let i=1;i<=nodes.length-1;i++){
+    let changed=false;
+    for(const e of directedEdges){
+      const before=dist[e.to];
+      const candidate=dist[e.from]===Infinity?Infinity:dist[e.from]+e.w;
+      if(candidate<dist[e.to]){
+        dist[e.to]=candidate;prev[e.to]=e.from;changed=true;
+        steps.push({iter:i,process:`${name(e.from)} ${graphType==='directed'?'→':'→'} ${name(e.to)}`,w:fmt(e.w),before:fmt(before),after:fmt(candidate),note:'Relaksasi berhasil'});
+      }else{
+        steps.push({iter:i,process:`${name(e.from)} ${graphType==='directed'?'→':'→'} ${name(e.to)}`,w:fmt(e.w),before:fmt(before),after:fmt(before),note:'Tidak diperbarui'});
+      }
+    }
+    if(!changed) break;
+  }
+  // Detect reachable negative cycle
+  let negativeCycle=false;
+  for(const e of directedEdges){
+    if(dist[e.from]!==Infinity && dist[e.from]+e.w<dist[e.to]){negativeCycle=true;break;}
+  }
+  const path=dist[target]===Infinity?[]:reconstruct(prev,target);
+  return {dist:dist[target],path,steps,negativeCycle};
+}
+
+function floydWarshall(source,target){
+  const ids=nodes.map(n=>n.id);
+  const d=Object.fromEntries(ids.map(i=>[i,Object.fromEntries(ids.map(j=>[j,i===j?0:Infinity]))]));
+  const next=Object.fromEntries(ids.map(i=>[i,Object.fromEntries(ids.map(j=>[j,null]))]));
+  edges.forEach(e=>{
+    if(e.weight<d[e.from][e.to]){
+      d[e.from][e.to]=e.weight;
+      next[e.from][e.to]=e.to;
+    }
+    if(graphType==='undirected' && e.weight<d[e.to][e.from]){
+      d[e.to][e.from]=e.weight;
+      next[e.to][e.from]=e.from;
+    }
+  });
+  const steps=[];
+  for(const k of ids){
+    for(const i of ids){
+      for(const j of ids){
+        if(d[i][k]===Infinity || d[k][j]===Infinity) continue;
+        const old=d[i][j], cand=d[i][k]+d[k][j];
+        if(cand<old){
+          d[i][j]=cand; next[i][j]=next[i][k];
+          steps.push({iter:steps.length+1,via:name(k),from:name(i),to:name(j),old:fmt(old),new:fmt(cand),note:'Jarak diperbarui'});
+        }
+      }
+    }
+  }
+  let path=[];
+  if(next[source][target]!=null){
+    path=[source];let cur=source,guard=0;
+    while(cur!==target && guard++<ids.length+2){
+      cur=next[cur][target];path.push(cur);
+    }
+    if(path[path.length-1]!==target)path=[];
+  }
+  return {dist:d[source][target],path,steps};
+}
+
+function heuristic(a,b){
+  const A=nodeById(a),B=nodeById(b);
+  return distance(A,B);
+}
+function aStar(source,target){
+  const adj=adjacency();
+  const g=Object.fromEntries(nodes.map(n=>[n.id,Infinity]));
+  const f=Object.fromEntries(nodes.map(n=>[n.id,Infinity]));
+  const prev=Object.fromEntries(nodes.map(n=>[n.id,null]));
+  const open=new Set([source]);
+  g[source]=0;f[source]=heuristic(source,target);
+  const steps=[];
+  let iter=0;
+  while(open.size){
+    let current=[...open].sort((a,b)=>f[a]-f[b])[0];
+    if(current===target)break;
+    open.delete(current);
+    for(const item of adj[current]){
+      const tentative=g[current]+item.w;
+      const oldG=g[item.to];
+      if(tentative<g[item.to]){
+        prev[item.to]=current;
+        g[item.to]=tentative;
+        f[item.to]=tentative+heuristic(item.to,target);
+        open.add(item.to);
+        steps.push({
+          iter:++iter,
+          process:`${name(current)} → ${name(item.to)}`,
+          g:fmt(g[item.to]),h:fmt(heuristic(item.to,target)),f:fmt(f[item.to]),
+          note:oldG===Infinity?'Masuk OPEN / diperbarui':'Nilai diperbarui'
+        });
+      }else{
+        steps.push({
+          iter:++iter,
+          process:`${name(current)} → ${name(item.to)}`,
+          g:fmt(oldG),h:fmt(heuristic(item.to,target)),f:fmt(f[item.to]),
+          note:'Tidak diperbarui'
+        });
+      }
+    }
+  }
+  const path=g[target]===Infinity?[]:reconstruct(prev,target);
+  return {dist:g[target],path,steps};
+}
+
+function runAlgorithm(){
+  if(nodes.length<2){alert('Tambahkan minimal dua simpul terlebih dahulu.');return}
+  const source=getSourceId(),target=getTargetId();
+  if(!source||!target||source===target){alert('Simpul awal dan tujuan harus berbeda.');return}
+  if(!edges.length){alert('Tambahkan minimal satu sisi terlebih dahulu.');return}
+  lastPath=[];
+  const alg=document.getElementById('algorithm').value;
+  let result;
+  if(alg==='bellman')result=bellmanFord(source,target);
+  else if(alg==='floyd')result=floydWarshall(source,target);
+  else result=aStar(source,target);
+  lastPath=result.path;
+  render();
+  displayResult(alg,result,source,target);
+}
+
+function displayResult(alg,result,source,target){
+  const labels={bellman:'Bellman-Ford',floyd:'Floyd-Warshall',astar:'A*'};
+  document.getElementById('resultSource').textContent=name(source);
+  document.getElementById('resultTarget').textContent=name(target);
+  document.getElementById('resultDistance').textContent=result.dist===Infinity?'Tidak terhubung':fmt(result.dist);
+  document.getElementById('resultAlgorithm').textContent=labels[alg];
+  document.getElementById('resultPath').textContent=result.path.length
+    ? result.path.map(name).join('  →  ')
+    : 'Tidak ditemukan lintasan dari simpul awal ke tujuan.';
+  let note='';
+  if(result.negativeCycle) note='Terdapat siklus berbobot negatif yang dapat dicapai dari simpul awal. Hasil Bellman-Ford perlu ditafsirkan dengan hati-hati.';
+  if(alg==='astar') note='Heuristic h(n) dihitung sebagai jarak Euclidean antara posisi simpul dan simpul tujuan.';
+  document.getElementById('resultNote').textContent=note;
+  renderSteps(alg,result.steps);
+  setStatus(result.path.length?`Lintasan ditemukan: ${result.path.map(name).join(' → ')}`:'Tidak ada lintasan yang ditemukan.');
+}
+function renderSteps(alg,steps){
+  const table=document.getElementById('stepsTable');
+  const title=document.getElementById('stepsTitle');
+  let head='',body='';
+  if(alg==='bellman'){
+    title.textContent='Langkah Bellman-Ford';
+    head='<tr><th>Iterasi</th><th>Sisi</th><th>Bobot</th><th>Jarak Sebelum</th><th>Jarak Sesudah</th><th>Keterangan</th></tr>';
+    body=steps.map(s=>`<tr><td>${s.iter}</td><td>${s.process}</td><td>${s.w}</td><td>${s.before}</td><td>${s.after}</td><td>${s.note}</td></tr>`).join('');
+  }else if(alg==='floyd'){
+    title.textContent='Langkah Floyd-Warshall';
+    head='<tr><th>Langkah</th><th>Perantara</th><th>Dari</th><th>Ke</th><th>Jarak Lama</th><th>Jarak Baru</th><th>Keterangan</th></tr>';
+    body=steps.map(s=>`<tr><td>${s.iter}</td><td>${s.via}</td><td>${s.from}</td><td>${s.to}</td><td>${s.old}</td><td>${s.new}</td><td>${s.note}</td></tr>`).join('');
+  }else{
+    title.textContent='Langkah A*';
+    head='<tr><th>Iterasi</th><th>Proses</th><th>g(n)</th><th>h(n)</th><th>f(n)</th><th>Keterangan</th></tr>';
+    body=steps.map(s=>`<tr><td>${s.iter}</td><td>${s.process}</td><td>${s.g}</td><td>${s.h}</td><td>${s.f}</td><td>${s.note}</td></tr>`).join('');
+  }
+  table.innerHTML=`<thead>${head}</thead><tbody>${body||`<tr><td colspan="8">Tidak ada perubahan yang tercatat.</td></tr>`}</tbody>`;
+}
+function clearResult(message){
+  document.getElementById('resultSource').textContent='—';
+  document.getElementById('resultTarget').textContent='—';
+  document.getElementById('resultDistance').textContent='—';
+  document.getElementById('resultAlgorithm').textContent='—';
+  document.getElementById('resultPath').textContent=message||'Belum ada hasil.';
+  document.getElementById('resultNote').textContent='';
+  document.getElementById('stepsTable').innerHTML='<thead><tr><th>Informasi</th></tr></thead><tbody><tr><td>Langkah algoritma akan muncul di sini.</td></tr></tbody>';
+}
+
+function loadExample(){
+  nodes=[];edges=[];lastPath=[];nodeCounter=0;
+  const w=svg.clientWidth||900,h=svg.clientHeight||610;
+  const pts=[
+    ['A',.16,.25],['B',.40,.16],['C',.40,.52],['D',.66,.25],['E',.66,.62],['F',.87,.43]
+  ];
+  pts.forEach(([nm,x,y])=>addNode(w*x,h*y,nm));
+  const id=n=>nodes.find(x=>x.name===n).id;
+  const sample=[
+    ['A','B',4],['A','C',2],['B','C',1],['B','D',5],
+    ['C','D',8],['C','E',10],['D','E',2],['D','F',6],['E','F',3]
+  ];
+  sample.forEach(e=>addEdge(id(e[0]),id(e[1]),e[2]));
+  updateSelectors();
+  document.getElementById('sourceSelect').value=id('A');
+  document.getElementById('targetSelect').value=id('F');
+  render();
+  clearResult('Contoh graf dimuat. Pilih algoritma lalu tekan Jalankan.');
+  setMode('idle');
+}
+window.addEventListener('resize',()=>render());
+
+// Start with an example so the simulator is immediately usable.
+setTimeout(loadExample,50);
+</script>
+</body>
+</html>
+'''
+
+path = Path("/mnt/data/simulator_lintasan_terpendek_final.html")
+path.write_text(html, encoding="utf-8")
+print(path)
